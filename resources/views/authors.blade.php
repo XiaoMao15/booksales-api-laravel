@@ -16,9 +16,9 @@
 
         @foreach ($authors as $author)
             <tr>
-                <td>{{ $author['id'] }}</td>
-                <td>{{ $author['name'] }}</td>
-                <td>{{ $author['biography'] }}</td>
+                <td>{{ $author->id_author }}</td>
+                <td>{{ $author->name }}</td>
+                <td>{{ $author->bio }}</td>
             </tr>
         @endforeach
     </table>

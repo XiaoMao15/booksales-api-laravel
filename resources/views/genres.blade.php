@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -16,9 +17,9 @@
 
         @foreach ($genres as $genre)
             <tr>
-                <td>{{ $genre['id'] }}</td>
-                <td>{{ $genre['name'] }}</td>
-                <td>{{ $genre['description'] }}</td>
+                <td>{{ $genre->id_genre }}</td>
+                <td>{{ $genre->name }}</td>
+                <td>{{ $genre->description }}</td>
             </tr>
         @endforeach
     </table>
