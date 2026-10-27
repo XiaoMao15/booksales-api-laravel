@@ -10,6 +10,10 @@ class AuthorController extends Controller
     {
         $authors = Author::all();
 
-        return view('authors', compact('authors'));
+        return response()->json([
+            'success' => true,
+            'message' => 'Data penulis berhasil diambil',
+            'data' => $authors
+        ], 200);
     }
 }

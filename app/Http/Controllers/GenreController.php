@@ -10,6 +10,10 @@ class GenreController extends Controller
     {
         $genres = Genre::all();
 
-        return view('genres', compact('genres'));
+        return response()->json([
+            'success' => true,
+            'message' => 'Data genre berhasil diambil',
+            'data' => $genres
+        ], 200);
     }
 }
