@@ -1,6 +1,6 @@
 # Book Sales API
 
-Book Sales API merupakan aplikasi REST API berbasis Laravel untuk mengelola data buku, author, dan genre. Project ini dikembangkan secara bertahap melalui penerapan konsep MVC, Migration, Seeder, Eloquent, REST API, dan Middleware.
+Book Sales API merupakan aplikasi REST API berbasis Laravel untuk mengelola data buku, author, genre, dan transaksi. Project ini dikembangkan secara bertahap melalui penerapan konsep MVC, Migration, Seeder, Eloquent, REST API, Middleware, autentikasi, dan pengaturan hak akses pengguna.
 
 ## Update Tugas 1 — MVC
 
@@ -67,7 +67,7 @@ Pada tugas keenam, project dikembangkan dengan menerapkan Middleware untuk memba
 - Menggunakan Laravel Sanctum untuk autentikasi berbasis token.
 - Mengatur routing pada `routes/api.php` agar Read All dan Show Author serta Genre dapat diakses secara publik.
 - Membatasi akses Create, Update, dan Destroy Author serta Genre hanya untuk pengguna dengan role `admin`.
-- Menguji seluruh aturan akses menggunakan Postman.
+- Menguji aturan akses menggunakan Postman.
 
 ### Pembagian Hak Akses
 
@@ -95,6 +95,57 @@ Pada tugas keenam, project dikembangkan dengan menerapkan Middleware untuk memba
 | 12 | DELETE Author sebagai admin | 200 OK |
 | 13 | DELETE Genre sebagai admin | 200 OK |
 
+## Update Tugas 7 — CRUD Transaksi
+
+Pada tugas ketujuh, project dikembangkan dengan menambahkan fitur CRUD untuk tabel Transaksi. Fitur ini menghubungkan data pengguna dan buku melalui relasi Eloquent serta menerapkan pembatasan akses berdasarkan role pengguna.
+
+- Membuat Model `Transaction` untuk mengelola data transaksi.
+- Membuat relasi `belongsTo()` antara Transaction dengan User dan Book.
+- Menggunakan Migration untuk mendefinisikan struktur tabel transaksi serta menambahkan kolom `quantity`.
+- Membuat `TransactionController` untuk menangani proses Create, Read All, Show, Update, dan Destroy.
+- Membuat `CustomerMiddleware` untuk membatasi akses fitur transaksi bagi pengguna dengan role `user`.
+- Menggunakan Laravel Sanctum untuk autentikasi dan pengamanan endpoint transaksi.
+- Menghasilkan nomor pesanan (`order_number`) secara otomatis.
+- Mengambil `customer_id` dari pengguna yang sedang login.
+- Menghitung `total_amount` berdasarkan harga buku dan jumlah pembelian.
+- Memeriksa ketersediaan stok buku sebelum transaksi dibuat dan memperbarui stok setelah transaksi berhasil.
+- Mengatur hak akses Create, Show, dan Update untuk Customer, sedangkan Read All dan Destroy hanya dapat dilakukan Admin.
+- Menggunakan relasi Eloquent untuk menampilkan informasi pengguna dan buku pada data transaksi.
+- Menguji seluruh fitur transaksi menggunakan Postman.
+
+### Pembagian Hak Akses Transaksi
+
+| Role | Hak Akses |
+|---|---|
+| Customer (`user`) | Create, Show, dan Update transaksi |
+| Admin | Read All dan Destroy transaksi |
+
+### Endpoint Transaksi
+
+| Method | Endpoint | Fungsi | Hak Akses |
+|---|---|---|---|
+| POST | `/api/transactions` | Membuat transaksi baru | Customer |
+| GET | `/api/transactions` | Mengambil seluruh data transaksi | Admin |
+| GET | `/api/transactions/{id}` | Mengambil detail transaksi | Customer |
+| PUT | `/api/transactions/{id}` | Memperbarui transaksi | Customer |
+| DELETE | `/api/transactions/{id}` | Menghapus transaksi | Admin |
+
+### Hasil Pengujian Transaksi
+
+Pengujian dilakukan menggunakan Postman dengan hasil sebagai berikut:
+
+| No. | Pengujian | Hasil |
+|---|---|---|
+| 1 | Login sebagai Customer | 200 OK |
+| 2 | Login sebagai Admin | 200 OK |
+| 3 | Logout | 200 OK |
+| 4 | POST Create Transaction sebagai Customer | 200 OK |
+| 5 | GET Show Transaction | 200 OK |
+| 6 | PUT Update Transaction sebagai Customer | 200 OK |
+| 7 | GET Read All Transactions sebagai Admin | 200 OK |
+| 8 | DELETE Transaction sebagai Admin | 200 OK |
+| 9 | GET Books | 200 OK |
+
 ## Endpoint API
 
 | Method | Endpoint | Fungsi | Hak Akses |
@@ -110,6 +161,13 @@ Pada tugas keenam, project dikembangkan dengan menerapkan Middleware untuk memba
 | POST | `/api/genres` | Menambahkan genre | Admin |
 | PUT/PATCH | `/api/genres/{id}` | Memperbarui genre | Admin |
 | DELETE | `/api/genres/{id}` | Menghapus genre | Admin |
+| POST | `/api/login` | Login pengguna | Publik |
+| POST | `/api/logout` | Logout pengguna | Terautentikasi |
+| POST | `/api/transactions` | Membuat transaksi | Customer |
+| GET | `/api/transactions` | Mengambil seluruh transaksi | Admin |
+| GET | `/api/transactions/{id}` | Mengambil detail transaksi | Customer |
+| PUT | `/api/transactions/{id}` | Memperbarui transaksi | Customer |
+| DELETE | `/api/transactions/{id}` | Menghapus transaksi | Admin |
 
 ## HTTP Response
 
@@ -117,9 +175,11 @@ Pada tugas keenam, project dikembangkan dengan menerapkan Middleware untuk memba
 |---|---|
 | `200 OK` | Permintaan berhasil |
 | `201 Created` | Data berhasil dibuat |
+| `400 Bad Request` | Permintaan tidak dapat diproses, misalnya stok tidak mencukupi |
 | `401 Unauthorized` | Pengguna belum terautentikasi |
 | `403 Forbidden` | Pengguna tidak memiliki hak akses |
 | `404 Not Found` | Data yang diminta tidak ditemukan |
+| `422 Unprocessable Entity` | Data tidak memenuhi validasi |
 
 ## Cara Menjalankan
 
@@ -166,10 +226,13 @@ Pengujian dilakukan menggunakan Postman dengan alamat berikut:
 - Books: `http://127.0.0.1:8000/api/books`
 - Authors: `http://127.0.0.1:8000/api/authors`
 - Genres: `http://127.0.0.1:8000/api/genres`
+- Login: `http://127.0.0.1:8000/api/login`
+- Logout: `http://127.0.0.1:8000/api/logout`
+- Transactions: `http://127.0.0.1:8000/api/transactions`
 
 Untuk pengujian endpoint yang memerlukan autentikasi, gunakan Bearer Token dari Laravel Sanctum.
 
-Untuk menambahkan atau memperbarui data, pilih metode HTTP yang sesuai, buka **Body → raw → JSON**, lalu masukkan data sesuai atribut tabel.
+Untuk menambahkan atau memperbarui data, pilih metode HTTP yang sesuai, buka **Body → raw → JSON**, lalu masukkan data sesuai atribut yang diperlukan.
 
 ## Laporan
 
@@ -181,6 +244,7 @@ Laporan pengerjaan dan screenshot hasil pengujian tersedia di folder `laporan/`.
 - Laporan Tugas 4 — Read All dan Create Genre & Author.
 - Laporan Tugas 5 — Show, Update, dan Destroy Genre & Author.
 - Laporan Tugas 6 — Middleware dan Hak Akses.
+- Laporan Tugas 7 — CRUD Transaksi.
 
 ## Repository
 
