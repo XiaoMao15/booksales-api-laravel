@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import api from './connect';
 
 function Admin() {
     const [activePage, setActivePage] = useState('genres');
+
     const [genres, setGenres] = useState([]);
     const [authors, setAuthors] = useState([]);
 
@@ -16,6 +16,7 @@ function Admin() {
     const [success, setSuccess] = useState('');
 
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     const [user, setUser] = useState(() => {
         try {
@@ -46,19 +47,21 @@ function Admin() {
         setError('');
 
         try {
-            const endpoint =
-                activePage === 'genres' ? '/genres' : '/authors';
+            const endpoint = activePage === 'genres'
+                ? '/genres'
+                : '/authors';
 
             const response = await api.get(endpoint);
 
             if (activePage === 'genres') {
-                setGenres(response.data.data);
+                setGenres(response.data.data || []);
             } else {
-                setAuthors(response.data.data);
+                setAuthors(response.data.data || []);
             }
         } catch (err) {
             setError(
-                err.response?.data?.message || 'Gagal mengambil data.'
+                err.response?.data?.message ||
+                'Gagal mengambil data.'
             );
         } finally {
             setLoading(false);
@@ -67,6 +70,7 @@ function Admin() {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+
         setLoginLoading(true);
         setError('');
         setSuccess('');
@@ -74,10 +78,11 @@ function Admin() {
         try {
             const response = await api.post('/login', loginData);
 
-            const { token, user: loggedUser } = response.data.data;
+            const token = response.data.token;
+            const loggedUser = response.data.user;
 
             if (loggedUser.role !== 'admin') {
-                setError('Akun ini bukan Administrator.');
+                setError('Akun ini bukan admin.');
                 return;
             }
 
@@ -88,16 +93,17 @@ function Admin() {
             );
 
             setUser(loggedUser);
+
             setLoginData({
                 email: '',
                 password: '',
             });
 
-            setSuccess('Login Admin berhasil.');
+            setSuccess('Login berhasil.');
         } catch (err) {
             setError(
                 err.response?.data?.message ||
-                'Login gagal. Periksa email dan password.'
+                'Email atau password salah.'
             );
         } finally {
             setLoginLoading(false);
@@ -108,21 +114,50 @@ function Admin() {
         try {
             await api.post('/logout');
         } catch (err) {
-            console.error('Logout request failed:', err);
-        } finally {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('auth_user');
-
-            setUser(null);
-            setShowForm(false);
-            setSuccess('');
-            setError('');
+            // Logout tetap dilanjutkan walaupun request gagal.
         }
+
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+
+        setUser(null);
+        setShowForm(false);
+        setEditingId(null);
+
+        setSuccess('');
+        setError('');
+    };
+
+    const resetForm = () => {
+        setFormData({
+            name: '',
+            description: '',
+            foto: '',
+            bio: '',
+        });
+
+        setEditingId(null);
+        setShowForm(false);
     };
 
     const handlePageChange = (page) => {
         setActivePage(page);
-        setShowForm(false);
+        resetForm();
+
+        setError('');
+        setSuccess('');
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const handleAdd = () => {
         setError('');
         setSuccess('');
 
@@ -132,13 +167,43 @@ function Admin() {
             foto: '',
             bio: '',
         });
+
+        setEditingId(null);
+        setShowForm(true);
     };
 
-    const handleCreate = async (e) => {
+    const handleEdit = (item) => {
+        setError('');
+        setSuccess('');
+
+        if (activePage === 'genres') {
+            setFormData({
+                name: item.name || '',
+                description: item.description || '',
+                foto: '',
+                bio: '',
+            });
+
+            setEditingId(item.id_genre);
+        } else {
+            setFormData({
+                name: item.name || '',
+                description: '',
+                foto: item.foto || '',
+                bio: item.bio || '',
+            });
+
+            setEditingId(item.id_author);
+        }
+
+        setShowForm(true);
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!user || user.role !== 'admin') {
-            setError('Silakan login sebagai Admin terlebih dahulu.');
+            setError('Hanya admin yang dapat melakukan tindakan ini.');
             return;
         }
 
@@ -147,50 +212,65 @@ function Admin() {
         setSuccess('');
 
         try {
-            const endpoint =
-                activePage === 'genres' ? '/genres' : '/authors';
+            let endpoint = '';
+            let payload = {};
 
-            const payload =
-                activePage === 'genres'
-                    ? {
-                        name: formData.name,
-                        description: formData.description,
-                    }
-                    : {
-                        name: formData.name,
-                        foto: formData.foto || null,
-                        bio: formData.bio || null,
-                    };
+            if (activePage === 'genres') {
+                endpoint = editingId !== null
+                    ? `/genres/${editingId}`
+                    : '/genres';
 
-            await api.post(endpoint, payload);
+                payload = {
+                    name: formData.name,
+                    description: formData.description,
+                };
+            } else {
+                endpoint = editingId !== null
+                    ? `/authors/${editingId}`
+                    : '/authors';
 
-            setFormData({
-                name: '',
-                description: '',
-                foto: '',
-                bio: '',
-            });
+                payload = {
+                    name: formData.name,
+                    foto: formData.foto || null,
+                    bio: formData.bio || null,
+                };
+            }
 
-            setShowForm(false);
-            setSuccess(
-                activePage === 'genres'
-                    ? 'Genre berhasil ditambahkan.'
-                    : 'Author berhasil ditambahkan.'
-            );
+            if (editingId !== null) {
+                await api.put(endpoint, payload);
 
+                setSuccess(
+                    activePage === 'genres'
+                        ? 'Genre berhasil diperbarui.'
+                        : 'Author berhasil diperbarui.'
+                );
+            } else {
+                await api.post(endpoint, payload);
+
+                setSuccess(
+                    activePage === 'genres'
+                        ? 'Genre berhasil ditambahkan.'
+                        : 'Author berhasil ditambahkan.'
+                );
+            }
+
+            resetForm();
             await fetchData();
         } catch (err) {
-            const responseData = err.response?.data;
+            const validationErrors = err.response?.data?.errors;
 
-            if (responseData?.errors) {
+            if (validationErrors) {
+                const firstError = Object.values(validationErrors)[0];
+
                 setError(
-                    Object.values(responseData.errors)
-                        .flat()
-                        .join(' ')
+                    Array.isArray(firstError)
+                        ? firstError[0]
+                        : 'Data tidak valid.'
                 );
             } else {
                 setError(
-                    responseData?.message || 'Gagal menambahkan data.'
+                    err.response?.data?.message ||
+                    'Gagal menyimpan data.'
                 );
             }
         } finally {
@@ -198,296 +278,958 @@ function Admin() {
         }
     };
 
+    const handleDelete = async (id) => {
+        if (!user || user.role !== 'admin') {
+            setError('Hanya admin yang dapat menghapus data.');
+            return;
+        }
+
+        const itemName = activePage === 'genres'
+            ? 'genre'
+            : 'author';
+
+        const confirmed = window.confirm(
+            `Yakin ingin menghapus ${itemName} ini?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        setError('');
+        setSuccess('');
+
+        try {
+            const endpoint = activePage === 'genres'
+                ? `/genres/${id}`
+                : `/authors/${id}`;
+
+            await api.delete(endpoint);
+
+            setSuccess(
+                activePage === 'genres'
+                    ? 'Genre berhasil dihapus.'
+                    : 'Author berhasil dihapus.'
+            );
+
+            await fetchData();
+        } catch (err) {
+            setError(
+                err.response?.data?.message ||
+                'Gagal menghapus data.'
+            );
+        }
+    };
+
     return (
-        <div className="container py-5">
-            <h2 className="fw-bold mb-4">
-                Book Sales Management
-            </h2>
-
-            <div className="d-flex justify-content-between align-items-center gap-3 mb-4 flex-wrap">
-                {user ? (
-                    <>
-                        <div>
-                            Logged in as <strong>{user.name}</strong>
-                            <span className="badge bg-success ms-2">
-                                Admin
-                            </span>
-                        </div>
-
-                        <button
-                            className="btn btn-outline-danger"
-                            onClick={handleLogout}
-                        >
-                            Logout
-                        </button>
-                    </>
-                ) : (
-                    <form
-                        onSubmit={handleLogin}
-                        className="d-flex gap-2 flex-wrap w-100"
-                    >
-                        <input
-                            type="email"
-                            className="form-control"
-                            placeholder="Admin Email"
-                            value={loginData.email}
-                            onChange={(e) =>
-                                setLoginData({
-                                    ...loginData,
-                                    email: e.target.value,
-                                })
-                            }
-                            required
-                        />
-
-                        <input
-                            type="password"
-                            className="form-control"
-                            placeholder="Password"
-                            value={loginData.password}
-                            onChange={(e) =>
-                                setLoginData({
-                                    ...loginData,
-                                    password: e.target.value,
-                                })
-                            }
-                            required
-                        />
-
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={loginLoading}
-                        >
-                            {loginLoading ? 'Logging in...' : 'Login Admin'}
-                        </button>
-                    </form>
-                )}
-            </div>
-
-            {error && (
-                <div className="alert alert-danger">
-                    {error}
-                </div>
-            )}
-
-            {success && (
-                <div className="alert alert-success">
-                    {success}
-                </div>
-            )}
-
-            <div className="d-flex gap-2 mb-4">
-                <button
-                    className={`btn ${
-                        activePage === 'genres'
-                            ? 'btn-primary'
-                            : 'btn-outline-primary'
-                    }`}
-                    onClick={() => handlePageChange('genres')}
+        <div
+            style={{
+                minHeight: '100vh',
+                background: '#f4f6f8',
+                padding: '30px',
+                fontFamily: 'Arial, sans-serif',
+            }}
+        >
+            <div
+                style={{
+                    maxWidth: '1100px',
+                    margin: '0 auto',
+                }}
+            >
+                {/* Header */}
+                <div
+                    style={{
+                        background: '#ffffff',
+                        padding: '25px',
+                        borderRadius: '12px',
+                        marginBottom: '20px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                    }}
                 >
-                    Genres
-                </button>
+                    <div>
+                        <h1 style={{ margin: 0 }}>
+                            Book Sales Management
+                        </h1>
 
-                <button
-                    className={`btn ${
-                        activePage === 'authors'
-                            ? 'btn-primary'
-                            : 'btn-outline-primary'
-                    }`}
-                    onClick={() => handlePageChange('authors')}
-                >
-                    Authors
-                </button>
-            </div>
-
-            <div className="card border-0 shadow-sm p-4">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h4 className="mb-0">
-                        {activePage === 'genres'
-                            ? 'Genre Management'
-                            : 'Author Management'}
-                    </h4>
-
-                    {user?.role === 'admin' && (
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => {
-                                setShowForm(!showForm);
-                                setError('');
-                                setSuccess('');
+                        <p
+                            style={{
+                                margin: '8px 0 0',
+                                color: '#666',
                             }}
                         >
-                            <i className="bi bi-plus-lg me-2"></i>
-                            Add {activePage === 'genres' ? 'Genre' : 'Author'}
-                        </button>
+                            Admin Dashboard
+                        </p>
+                    </div>
+
+                    {user && (
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '15px',
+                            }}
+                        >
+                            <div>
+                                <strong>{user.name}</strong>
+
+                                <span
+                                    style={{
+                                        marginLeft: '8px',
+                                        padding: '4px 8px',
+                                        borderRadius: '5px',
+                                        background: '#e8f0fe',
+                                        color: '#1a73e8',
+                                        fontSize: '12px',
+                                    }}
+                                >
+                                    Admin
+                                </span>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                style={{
+                                    padding: '8px 14px',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    background: '#dc3545',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Logout
+                            </button>
+                        </div>
                     )}
                 </div>
 
-                {showForm && user?.role === 'admin' && (
-                    <form
-                        onSubmit={handleCreate}
-                        className="border rounded p-3 mb-4"
+                {/* Login */}
+                {!user ? (
+                    <div
+                        style={{
+                            maxWidth: '450px',
+                            margin: '50px auto',
+                            background: '#fff',
+                            padding: '30px',
+                            borderRadius: '12px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                        }}
                     >
-                        <h5 className="mb-3">
-                            Add New {activePage === 'genres' ? 'Genre' : 'Author'}
-                        </h5>
+                        <h2>Admin Login</h2>
 
-                        <div className="mb-3">
-                            <label className="form-label">Name</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                value={formData.name}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        name: e.target.value,
-                                    })
-                                }
-                                required
-                            />
-                        </div>
+                        <form onSubmit={handleLogin}>
+                            <div style={{ marginBottom: '15px' }}>
+                                <label>Email</label>
 
-                        {activePage === 'genres' ? (
-                            <div className="mb-3">
-                                <label className="form-label">
-                                    Description
-                                </label>
-                                <textarea
-                                    className="form-control"
-                                    rows="3"
-                                    value={formData.description}
+                                <input
+                                    type="email"
+                                    value={loginData.email}
                                     onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            description: e.target.value,
+                                        setLoginData({
+                                            ...loginData,
+                                            email: e.target.value,
                                         })
                                     }
                                     required
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        marginTop: '6px',
+                                        boxSizing: 'border-box',
+                                    }}
                                 />
                             </div>
-                        ) : (
-                            <>
-                                <div className="mb-3">
-                                    <label className="form-label">
-                                        Photo URL
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={formData.foto}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                foto: e.target.value,
-                                            })
-                                        }
-                                        placeholder="https://example.com/photo.jpg"
-                                    />
-                                </div>
 
-                                <div className="mb-3">
-                                    <label className="form-label">Bio</label>
-                                    <textarea
-                                        className="form-control"
-                                        rows="3"
-                                        value={formData.bio}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                bio: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-                            </>
+                            <div style={{ marginBottom: '15px' }}>
+                                <label>Password</label>
+
+                                <input
+                                    type="password"
+                                    value={loginData.password}
+                                    onChange={(e) =>
+                                        setLoginData({
+                                            ...loginData,
+                                            password: e.target.value,
+                                        })
+                                    }
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        marginTop: '6px',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loginLoading}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    background: '#007bff',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                {loginLoading
+                                    ? 'Logging in...'
+                                    : 'Login'}
+                            </button>
+                        </form>
+                    </div>
+                ) : (
+                    <>
+                        {/* Alert */}
+                        {error && (
+                            <div
+                                style={{
+                                    background: '#f8d7da',
+                                    color: '#842029',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    marginBottom: '15px',
+                                }}
+                            >
+                                {error}
+                            </div>
                         )}
 
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={saving}
+                        {success && (
+                            <div
+                                style={{
+                                    background: '#d1e7dd',
+                                    color: '#0f5132',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    marginBottom: '15px',
+                                }}
+                            >
+                                {success}
+                            </div>
+                        )}
+
+                        {/* Tabs */}
+                        <div
+                            style={{
+                                background: '#fff',
+                                padding: '10px',
+                                borderRadius: '10px',
+                                marginBottom: '20px',
+                                display: 'flex',
+                                gap: '10px',
+                            }}
                         >
-                            {saving ? 'Saving...' : 'Save'}
-                        </button>
+                            <button
+                                type="button"
+                                onClick={() => handlePageChange('genres')}
+                                style={{
+                                    padding: '10px 20px',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    background:
+                                        activePage === 'genres'
+                                            ? '#007bff'
+                                            : '#e9ecef',
+                                    color:
+                                        activePage === 'genres'
+                                            ? '#fff'
+                                            : '#000',
+                                }}
+                            >
+                                Genres
+                            </button>
 
-                        <button
-                            type="button"
-                            className="btn btn-secondary ms-2"
-                            onClick={() => setShowForm(false)}
+                            <button
+                                type="button"
+                                onClick={() => handlePageChange('authors')}
+                                style={{
+                                    padding: '10px 20px',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    background:
+                                        activePage === 'authors'
+                                            ? '#007bff'
+                                            : '#e9ecef',
+                                    color:
+                                        activePage === 'authors'
+                                            ? '#fff'
+                                            : '#000',
+                                }}
+                            >
+                                Authors
+                            </button>
+                        </div>
+
+                        {/* Main Card */}
+                        <div
+                            style={{
+                                background: '#fff',
+                                borderRadius: '12px',
+                                padding: '25px',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                            }}
                         >
-                            Cancel
-                        </button>
-                    </form>
-                )}
+                            {/* Title */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '20px',
+                                }}
+                            >
+                                <div>
+                                    <h2 style={{ margin: 0 }}>
+                                        {activePage === 'genres'
+                                            ? 'Genre Management'
+                                            : 'Author Management'}
+                                    </h2>
 
-                {loading && (
-                    <p>Loading data...</p>
-                )}
+                                    <p
+                                        style={{
+                                            color: '#666',
+                                            margin: '6px 0 0',
+                                        }}
+                                    >
+                                        {activePage === 'genres'
+                                            ? 'Kelola data genre buku.'
+                                            : 'Kelola data author buku.'}
+                                    </p>
+                                </div>
 
-                {!loading && !error && activePage === 'genres' && (
-                    <table className="table table-bordered">
-                        <thead className="table-light">
-                            <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
+                                <button
+                                    type="button"
+                                    onClick={handleAdd}
+                                    style={{
+                                        padding: '10px 16px',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        background: '#198754',
+                                        color: '#fff',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    + Add{' '}
+                                    {activePage === 'genres'
+                                        ? 'Genre'
+                                        : 'Author'}
+                                </button>
+                            </div>
 
-                        <tbody>
-                            {genres.map((genre) => (
-                                <tr key={genre.id_genre}>
-                                    <td>{genre.id_genre}</td>
-                                    <td>{genre.name}</td>
-                                    <td>{genre.description}</td>
-                                </tr>
-                            ))}
+                            {/* Form */}
+                            {showForm && (
+                                <div
+                                    style={{
+                                        background: '#f8f9fa',
+                                        border: '1px solid #dee2e6',
+                                        borderRadius: '8px',
+                                        padding: '20px',
+                                        marginBottom: '25px',
+                                    }}
+                                >
+                                    <h3 style={{ marginTop: 0 }}>
+                                        {editingId !== null
+                                            ? `Edit ${
+                                                  activePage === 'genres'
+                                                      ? 'Genre'
+                                                      : 'Author'
+                                              }`
+                                            : `Add ${
+                                                  activePage === 'genres'
+                                                      ? 'Genre'
+                                                      : 'Author'
+                                              }`}
+                                    </h3>
 
-                            {genres.length === 0 && (
-                                <tr>
-                                    <td colSpan="3" className="text-center">
-                                        No genre data found.
-                                    </td>
-                                </tr>
+                                    <form onSubmit={handleSubmit}>
+                                        <div
+                                            style={{
+                                                display: 'grid',
+                                                gap: '15px',
+                                            }}
+                                        >
+                                            <div>
+                                                <label>
+                                                    Name
+                                                </label>
+
+                                                <input
+                                                    type="text"
+                                                    name="name"
+                                                    value={formData.name}
+                                                    onChange={
+                                                        handleInputChange
+                                                    }
+                                                    required
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '10px',
+                                                        marginTop: '6px',
+                                                        boxSizing:
+                                                            'border-box',
+                                                    }}
+                                                />
+                                            </div>
+
+                                            {activePage === 'genres' ? (
+                                                <div>
+                                                    <label>
+                                                        Description
+                                                    </label>
+
+                                                    <textarea
+                                                        name="description"
+                                                        value={
+                                                            formData.description
+                                                        }
+                                                        onChange={
+                                                            handleInputChange
+                                                        }
+                                                        required
+                                                        rows="4"
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px',
+                                                            marginTop: '6px',
+                                                            boxSizing:
+                                                                'border-box',
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div>
+                                                        <label>
+                                                            Foto URL
+                                                        </label>
+
+                                                        <input
+                                                            type="text"
+                                                            name="foto"
+                                                            value={
+                                                                formData.foto
+                                                            }
+                                                            onChange={
+                                                                handleInputChange
+                                                            }
+                                                            placeholder="https://..."
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px',
+                                                                marginTop:
+                                                                    '6px',
+                                                                boxSizing:
+                                                                    'border-box',
+                                                            }}
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <label>
+                                                            Bio
+                                                        </label>
+
+                                                        <textarea
+                                                            name="bio"
+                                                            value={
+                                                                formData.bio
+                                                            }
+                                                            onChange={
+                                                                handleInputChange
+                                                            }
+                                                            rows="4"
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px',
+                                                                marginTop:
+                                                                    '6px',
+                                                                boxSizing:
+                                                                    'border-box',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                marginTop: '15px',
+                                                display: 'flex',
+                                                gap: '10px',
+                                            }}
+                                        >
+                                            <button
+                                                type="submit"
+                                                disabled={saving}
+                                                style={{
+                                                    padding: '10px 18px',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    background: '#007bff',
+                                                    color: '#fff',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                {saving
+                                                    ? 'Saving...'
+                                                    : editingId !== null
+                                                    ? 'Update'
+                                                    : 'Save'}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={resetForm}
+                                                style={{
+                                                    padding: '10px 18px',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    background: '#6c757d',
+                                                    color: '#fff',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             )}
-                        </tbody>
-                    </table>
-                )}
 
-                {!loading && !error && activePage === 'authors' && (
-                    <table className="table table-bordered">
-                        <thead className="table-light">
-                            <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Bio</th>
-                            </tr>
-                        </thead>
+                            {/* Loading */}
+                            {loading ? (
+                                <p>Loading data...</p>
+                            ) : activePage === 'genres' ? (
+                                /* Genre Table */
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table
+                                        style={{
+                                            width: '100%',
+                                            borderCollapse:
+                                                'collapse',
+                                        }}
+                                    >
+                                        <thead>
+                                            <tr
+                                                style={{
+                                                    background:
+                                                        '#f1f3f5',
+                                                }}
+                                            >
+                                                <th
+                                                    style={{
+                                                        padding:
+                                                            '12px',
+                                                        textAlign:
+                                                            'left',
+                                                        borderBottom:
+                                                            '1px solid #ddd',
+                                                    }}
+                                                >
+                                                    ID
+                                                </th>
 
-                        <tbody>
-                            {authors.map((author) => (
-                                <tr key={author.id_author}>
-                                    <td>{author.id_author}</td>
-                                    <td>{author.name}</td>
-                                    <td>{author.bio || '-'}</td>
-                                </tr>
-                            ))}
+                                                <th
+                                                    style={{
+                                                        padding:
+                                                            '12px',
+                                                        textAlign:
+                                                            'left',
+                                                        borderBottom:
+                                                            '1px solid #ddd',
+                                                    }}
+                                                >
+                                                    Name
+                                                </th>
 
-                            {authors.length === 0 && (
-                                <tr>
-                                    <td colSpan="3" className="text-center">
-                                        No author data found.
-                                    </td>
-                                </tr>
+                                                <th
+                                                    style={{
+                                                        padding:
+                                                            '12px',
+                                                        textAlign:
+                                                            'left',
+                                                        borderBottom:
+                                                            '1px solid #ddd',
+                                                    }}
+                                                >
+                                                    Description
+                                                </th>
+
+                                                <th
+                                                    style={{
+                                                        padding:
+                                                            '12px',
+                                                        textAlign:
+                                                            'center',
+                                                        borderBottom:
+                                                            '1px solid #ddd',
+                                                    }}
+                                                >
+                                                    Action
+                                                </th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {genres.length === 0 ? (
+                                                <tr>
+                                                    <td
+                                                        colSpan="4"
+                                                        style={{
+                                                            padding:
+                                                                '20px',
+                                                            textAlign:
+                                                                'center',
+                                                        }}
+                                                    >
+                                                        Belum ada data
+                                                        genre.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                genres.map(
+                                                    (genre) => (
+                                                        <tr
+                                                            key={
+                                                                genre.id_genre
+                                                            }
+                                                        >
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '12px',
+                                                                    borderBottom:
+                                                                        '1px solid #eee',
+                                                                }}
+                                                            >
+                                                                {
+                                                                    genre.id_genre
+                                                                }
+                                                            </td>
+
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '12px',
+                                                                    borderBottom:
+                                                                        '1px solid #eee',
+                                                                }}
+                                                            >
+                                                                {
+                                                                    genre.name
+                                                                }
+                                                            </td>
+
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '12px',
+                                                                    borderBottom:
+                                                                        '1px solid #eee',
+                                                                }}
+                                                            >
+                                                                {
+                                                                    genre.description
+                                                                }
+                                                            </td>
+
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '12px',
+                                                                    borderBottom:
+                                                                        '1px solid #eee',
+                                                                    textAlign:
+                                                                        'center',
+                                                                }}
+                                                            >
+                                                                <div
+                                                                    style={{
+                                                                        display:
+                                                                            'flex',
+                                                                        justifyContent:
+                                                                            'center',
+                                                                        gap: '8px',
+                                                                    }}
+                                                                >
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleEdit(
+                                                                                genre
+                                                                            )
+                                                                        }
+                                                                        style={{
+                                                                            padding:
+                                                                                '7px 12px',
+                                                                            border: 'none',
+                                                                            borderRadius:
+                                                                                '5px',
+                                                                            background:
+                                                                                '#ffc107',
+                                                                            color: '#000',
+                                                                            cursor: 'pointer',
+                                                                        }}
+                                                                    >
+                                                                        Edit
+                                                                    </button>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleDelete(
+                                                                                genre.id_genre
+                                                                            )
+                                                                        }
+                                                                        style={{
+                                                                            padding:
+                                                                                '7px 12px',
+                                                                            border: 'none',
+                                                                            borderRadius:
+                                                                                '5px',
+                                                                            background:
+                                                                                '#dc3545',
+                                                                            color: '#fff',
+                                                                            cursor: 'pointer',
+                                                                        }}
+                                                                    >
+                                                                        Delete
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                )
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                /* Author Table */
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table
+                                        style={{
+                                            width: '100%',
+                                            borderCollapse:
+                                                'collapse',
+                                        }}
+                                    >
+                                        <thead>
+                                            <tr
+                                                style={{
+                                                    background:
+                                                        '#f1f3f5',
+                                                }}
+                                            >
+                                                <th
+                                                    style={{
+                                                        padding:
+                                                            '12px',
+                                                        textAlign:
+                                                            'left',
+                                                        borderBottom:
+                                                            '1px solid #ddd',
+                                                    }}
+                                                >
+                                                    ID
+                                                </th>
+
+                                                <th
+                                                    style={{
+                                                        padding:
+                                                            '12px',
+                                                        textAlign:
+                                                            'left',
+                                                        borderBottom:
+                                                            '1px solid #ddd',
+                                                    }}
+                                                >
+                                                    Name
+                                                </th>
+
+                                                <th
+                                                    style={{
+                                                        padding:
+                                                            '12px',
+                                                        textAlign:
+                                                            'left',
+                                                        borderBottom:
+                                                            '1px solid #ddd',
+                                                    }}
+                                                >
+                                                    Bio
+                                                </th>
+
+                                                <th
+                                                    style={{
+                                                        padding:
+                                                            '12px',
+                                                        textAlign:
+                                                            'center',
+                                                        borderBottom:
+                                                            '1px solid #ddd',
+                                                    }}
+                                                >
+                                                    Action
+                                                </th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {authors.length === 0 ? (
+                                                <tr>
+                                                    <td
+                                                        colSpan="4"
+                                                        style={{
+                                                            padding:
+                                                                '20px',
+                                                            textAlign:
+                                                                'center',
+                                                        }}
+                                                    >
+                                                        Belum ada data
+                                                        author.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                authors.map(
+                                                    (author) => (
+                                                        <tr
+                                                            key={
+                                                                author.id_author
+                                                            }
+                                                        >
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '12px',
+                                                                    borderBottom:
+                                                                        '1px solid #eee',
+                                                                }}
+                                                            >
+                                                                {
+                                                                    author.id_author
+                                                                }
+                                                            </td>
+
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '12px',
+                                                                    borderBottom:
+                                                                        '1px solid #eee',
+                                                                }}
+                                                            >
+                                                                {
+                                                                    author.name
+                                                                }
+                                                            </td>
+
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '12px',
+                                                                    borderBottom:
+                                                                        '1px solid #eee',
+                                                                }}
+                                                            >
+                                                                {
+                                                                    author.bio ||
+                                                                    '-'
+                                                                }
+                                                            </td>
+
+                                                            <td
+                                                                style={{
+                                                                    padding:
+                                                                        '12px',
+                                                                    borderBottom:
+                                                                        '1px solid #eee',
+                                                                    textAlign:
+                                                                        'center',
+                                                                }}
+                                                            >
+                                                                <div
+                                                                    style={{
+                                                                        display:
+                                                                            'flex',
+                                                                        justifyContent:
+                                                                            'center',
+                                                                        gap: '8px',
+                                                                    }}
+                                                                >
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleEdit(
+                                                                                author
+                                                                            )
+                                                                        }
+                                                                        style={{
+                                                                            padding:
+                                                                                '7px 12px',
+                                                                            border: 'none',
+                                                                            borderRadius:
+                                                                                '5px',
+                                                                            background:
+                                                                                '#ffc107',
+                                                                            color: '#000',
+                                                                            cursor: 'pointer',
+                                                                        }}
+                                                                    >
+                                                                        Edit
+                                                                    </button>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleDelete(
+                                                                                author.id_author
+                                                                            )
+                                                                        }
+                                                                        style={{
+                                                                            padding:
+                                                                                '7px 12px',
+                                                                            border: 'none',
+                                                                            borderRadius:
+                                                                                '5px',
+                                                                            background:
+                                                                                '#dc3545',
+                                                                            color: '#fff',
+                                                                            cursor: 'pointer',
+                                                                        }}
+                                                                    >
+                                                                        Delete
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                )
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             )}
-                        </tbody>
-                    </table>
+                        </div>
+                    </>
                 )}
             </div>
         </div>
     );
 }
 
-createRoot(document.getElementById('admin')).render(<Admin />);
+createRoot(document.getElementById('admin')).render(
+    <Admin />
+);

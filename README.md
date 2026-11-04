@@ -1,50 +1,33 @@
-## Update Tugas React JS Lanjutan #1 — Read dan Create Genre & Author
+## Update Tugas React JS Lanjutan #2 — Update dan Delete Genre & Author
 
-Pada tugas React JS Lanjutan pertama, project Book Sales dikembangkan dengan menambahkan antarmuka Admin menggunakan React JS. Fitur ini terintegrasi dengan REST API Laravel yang telah dibuat pada tugas sebelumnya.
+Pada tugas React JS Lanjutan kedua, project Book Sales dikembangkan dengan melanjutkan fitur Admin React JS yang telah dibuat pada tugas sebelumnya. Fitur yang ditambahkan adalah Update dan Delete untuk data Genre dan Author.
 
 ### Fitur yang Dikembangkan
 
-- Menggunakan React JS sebagai frontend untuk halaman Admin.
-- Menggunakan Axios untuk melakukan komunikasi dengan REST API Laravel.
-- Membuat fitur Login Admin menggunakan endpoint autentikasi Laravel Sanctum.
-- Membuat fitur Logout untuk mengakhiri sesi autentikasi.
-- Membuat fitur Read untuk menampilkan seluruh data Genre dan Author dari database.
-- Membuat fitur Create untuk menambahkan data Genre dan Author melalui form.
-- Menggunakan React Hooks, yaitu `useState` dan `useEffect`, untuk mengelola state dan mengambil data API.
-- Menambahkan navigasi antara halaman Genre dan Author.
-- Menampilkan pesan keberhasilan atau kegagalan ketika proses pengambilan dan penambahan data dilakukan.
-- Membatasi tampilan fitur Create hanya untuk pengguna dengan role `admin`.
-
-### Teknologi yang Digunakan
-
-| Teknologi | Fungsi |
-|---|---|
-| Laravel | Backend dan REST API |
-| React JS | Frontend Admin |
-| Axios | Komunikasi dengan REST API |
-| Laravel Sanctum | Autentikasi menggunakan token |
-| Bootstrap | Styling antarmuka |
-| MariaDB | Database |
+- Menambahkan fitur Update data Genre melalui halaman Admin.
+- Menambahkan fitur Delete data Genre melalui halaman Admin.
+- Menambahkan fitur Update data Author melalui halaman Admin.
+- Menambahkan fitur Delete data Author melalui halaman Admin.
+- Menambahkan tombol Edit dan Delete pada tabel Genre dan Author.
+- Menambahkan form untuk mengubah data yang sudah tersimpan.
+- Menambahkan konfirmasi sebelum data dihapus.
+- Menampilkan pesan keberhasilan setelah proses Update dan Delete berhasil.
+- Tetap menggunakan Axios untuk komunikasi dengan REST API Laravel.
+- Membatasi proses Update dan Delete hanya untuk pengguna dengan role `admin`.
 
 ### Hasil Pengujian
 
 | No. | Pengujian | Hasil |
 |---|---|---|
-| 1 | Login menggunakan akun Admin | Berhasil |
-| 2 | Logout Admin | Berhasil |
-| 3 | Menampilkan seluruh data Genre | Berhasil |
-| 4 | Menambahkan data Genre | Berhasil |
-| 5 | Menampilkan seluruh data Author | Berhasil |
-| 6 | Menambahkan data Author | Berhasil |
+| 1 | Update data Genre | Berhasil |
+| 2 | Delete data Genre | Berhasil |
+| 3 | Update data Author | Berhasil |
+| 4 | Delete data Author | Berhasil |
 
-Fitur Read dan Create Genre serta Author berhasil diimplementasikan dan diuji melalui antarmuka React yang terhubung dengan REST API Laravel.
+Fitur Update dan Delete Genre serta Author berhasil diimplementasikan dan diuji melalui halaman Admin React yang terhubung dengan REST API Laravel.
 
-### Halaman Admin
+### Laporan
 
-Halaman Admin dapat diakses melalui:
+Laporan dan screenshot pengerjaan Tugas React JS Lanjutan #2 tersedia di folder `laporan/`.
 
-`http://127.0.0.1:8000/admin/dashboard`
-
-Laporan dan screenshot pengerjaan tersedia di folder `laporan/`.
-
-- Laporan Tugas React JS Lanjutan #1 — Read dan Create Genre & Author.
+- Laporan Tugas React JS Lanjutan #2 — Update dan Delete Genre & Author.
