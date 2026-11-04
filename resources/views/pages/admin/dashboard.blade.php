@@ -1,6 +1,8 @@
 
 @extends('layouts.app')
 
+@section('title', 'Admin Dashboard - Booksales')
+
 @section('content')
 <div class="container py-5 admin-dashboard">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -72,5 +74,13 @@
             </a>
         </div>
     </div>
+
+    <hr class="my-5">
+
+    <div id="admin"></div>
 </div>
 @endsection
+
+@push('scripts')
+    @vite('resources/js/admin.jsx')
+@endpush
