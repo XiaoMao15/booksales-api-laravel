@@ -18,6 +18,34 @@ body {
     border-bottom: 1px solid #E9EEF5;
 }
 
+.site-navbar .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.site-navbar-menu {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    margin-left: 32px;
+}
+
+.site-navbar-links,
+.site-navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.site-navbar-links {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
 .brand-icon {
     display: inline-flex;
     align-items: center;
@@ -42,6 +70,34 @@ body {
 
 .nav-link:hover {
     color: var(--primary);
+}
+
+@media (max-width: 991.98px) {
+    .site-navbar-menu {
+        flex-basis: 100%;
+        flex-direction: column;
+        gap: 8px;
+        margin: 12px 0 0;
+        padding-top: 12px;
+        border-top: 1px solid #E9EEF5;
+    }
+
+    .site-navbar-links {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .site-navbar-links {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .site-navbar-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
 }
 
 /* Buttons */
@@ -555,7 +611,7 @@ body {
 .auth-card {
     width: 100%;
     max-width: 440px;
-    background: var(--white);
+    background: var(--white, #FFFFFF);
     padding: 40px;
     border-radius: 16px;
     box-shadow: 0 8px 30px rgba(22, 59, 101, 0.08);

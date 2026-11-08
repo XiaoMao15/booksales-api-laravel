@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320">
+  <rect width="480" height="320" fill="#edf3fa"/>
+  <g fill="none" stroke="#3478c7" stroke-linecap="round" stroke-linejoin="round" stroke-width="8">
+    <path d="M240 101c-34-22-71-25-112-12v125c41-13 78-10 112 12z"/>
+    <path d="M240 101c34-22 71-25 112-12v125c-41-13-78-10-112 12z"/>
+    <path d="M240 101v125"/>
+  </g>
+  <text x="240" y="270" fill="#163b65" font-family="Arial, sans-serif" font-size="22" text-anchor="middle">Cover unavailable</text>
+</svg>

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import api from './connect';
+import api from '../../connect';
 
 function Admin() {
     const [activePage, setActivePage] = useState('genres');
@@ -78,8 +77,7 @@ function Admin() {
         try {
             const response = await api.post('/login', loginData);
 
-            const token = response.data.token;
-            const loggedUser = response.data.user;
+            const { token, user: loggedUser } = response.data.data;
 
             if (loggedUser.role !== 'admin') {
                 setError('Akun ini bukan admin.');
@@ -92,6 +90,7 @@ function Admin() {
                 JSON.stringify(loggedUser)
             );
 
+            window.dispatchEvent(new Event('app:auth-changed'));
             setUser(loggedUser);
 
             setLoginData({
@@ -1230,6 +1229,4 @@ function Admin() {
     );
 }
 
-createRoot(document.getElementById('admin')).render(
-    <Admin />
-);
+export default Admin;

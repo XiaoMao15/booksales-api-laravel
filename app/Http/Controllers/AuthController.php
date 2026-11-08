@@ -26,7 +26,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Email atau password salah',
@@ -43,6 +43,43 @@ class AuthController extends Controller
                 'token' => $token,
             ],
         ]);
+    }
+
+    public function register(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|min:3|max:100',
+            'email' => 'required|email|max:255|unique:users,email',
+            'username' => ['required', 'string', 'min:4', 'max:20', 'regex:/^[A-Za-z0-9_]+$/', 'unique:users,username'],
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'email.unique' => 'Email sudah terdaftar.',
+            'username.unique' => 'Username sudah dipakai.',
+            'username.regex' => 'Username hanya boleh huruf, angka, dan underscore.',
+            'password.confirmed' => 'Konfirmasi password tidak sama.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = User::create([
+            'name' => $request->name,
+            'username' => $request->username,
+            'email' => $request->email,
+            'password' => $request->password,
+            'role' => 'user',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Registrasi berhasil',
+            'data' => ['user' => $user],
+        ], 201);
     }
 
     public function logout(Request $request)

@@ -1,25 +1,21 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\BookPageController;
-use App\Http\Controllers\AuthorPageController;
-use App\Http\Controllers\GenrePageController;
-use App\Http\Controllers\AuthPageController;
-use App\Http\Controllers\AdminPageController;
 
-Route::get('/', [HomeController::class, 'index']);
+Route::get('/media/{filename}', function (string $filename) {
+    $imagePath = storage_path('app/public/'.$filename);
 
-Route::get('/books', [BookPageController::class, 'index']);
-Route::get('/books/{id}', [BookPageController::class, 'show']);
+    if (is_file($imagePath)) {
+        return response()->file($imagePath);
+    }
 
-Route::get('/authors', [AuthorPageController::class, 'index']);
-Route::get('/authors/{id}', [AuthorPageController::class, 'show']);
+    return response()->file(public_path('images/image-placeholder.svg'));
+})->where('filename', '[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)');
 
-Route::get('/genres', [GenrePageController::class, 'index']);
-Route::get('/genres/{id}', [GenrePageController::class, 'show']);
-
-Route::get('/login', [AuthPageController::class, 'login']);
-Route::get('/register', [AuthPageController::class, 'register']);
-
-Route::get('/admin/dashboard', [AdminPageController::class, 'index']);
+Route::view('/', 'app');
+Route::view('/books/{id?}', 'app')->whereNumber('id');
+Route::view('/authors/{id?}', 'app')->whereNumber('id');
+Route::view('/genres/{id?}', 'app')->whereNumber('id');
+Route::view('/login', 'app');
+Route::view('/register', 'app');
+Route::view('/admin/dashboard', 'app');
