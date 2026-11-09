@@ -31,3 +31,25 @@ Fitur Update dan Delete Genre serta Author berhasil diimplementasikan dan diuji 
 Laporan dan screenshot pengerjaan Tugas React JS Lanjutan #2 tersedia di folder `laporan/`.
 
 - Laporan Tugas React JS Lanjutan #2 — Update dan Delete Genre & Author.
+
+## Update Tugas React JS Lanjutan #4 — Routing & Hak Akses Pengguna
+
+Pada tugas React JS Lanjutan keempat, project Book Sales dilengkapi dengan pengaturan routing dan hak akses berdasarkan role pengguna (`user` dan `admin`).
+
+### Fitur yang Dikembangkan
+
+- Membatasi halaman Admin Dashboard agar hanya dapat diakses oleh pengguna dengan role `admin`.
+- Mengarahkan pengguna yang belum login ke halaman Login saat membuka Dashboard Admin.
+- Mengarahkan pengguna non-admin ke halaman beranda jika mencoba membuka Dashboard Admin.
+- Menyimpan dan membaca informasi autentikasi dari `localStorage`.
+- Menyinkronkan tampilan setelah login dan logout.
+- Membiarkan halaman beranda, buku, author, dan genre tetap dapat diakses semua pengguna.
+- Tetap menggunakan middleware Laravel untuk melindungi endpoint API.
+
+### Hasil Verifikasi
+
+| No. | Pengujian | Hasil |
+|---|---|---|
+| 1 | Build frontend dengan Vite | Berhasil |
+
+Routing dan pembatasan akses pengguna telah ditambahkan pada frontend React. Hak akses endpoint tetap divalidasi oleh middleware Laravel.
