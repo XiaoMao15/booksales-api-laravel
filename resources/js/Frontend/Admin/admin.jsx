@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../connect';
+import { getAuthUser, hasRole } from '../../auth';
 
 function Admin() {
     const [activePage, setActivePage] = useState('genres');
@@ -17,13 +18,7 @@ function Admin() {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
-    const [user, setUser] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('auth_user')) || null;
-        } catch {
-            return null;
-        }
-    });
+    const [user, setUser] = useState(getAuthUser);
 
     const [loginData, setLoginData] = useState({
         email: '',
@@ -118,6 +113,7 @@ function Admin() {
 
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
+        window.dispatchEvent(new Event('app:auth-changed'));
 
         setUser(null);
         setShowForm(false);
@@ -201,7 +197,7 @@ function Admin() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!user || user.role !== 'admin') {
+        if (!hasRole('admin', user)) {
             setError('Hanya admin yang dapat melakukan tindakan ini.');
             return;
         }

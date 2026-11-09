@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import api from './connect';
+import { getAuthUser, hasRole } from './auth';
 import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
 import Admin from './Frontend/Admin/admin';
@@ -65,21 +66,11 @@ function useApiData(endpoint) {
 }
 
 function AppHeader() {
-    const [user, setUser] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('auth_user')) || null;
-        } catch {
-            return null;
-        }
-    });
+    const [user, setUser] = useState(getAuthUser);
 
     useEffect(() => {
         const syncUser = () => {
-            try {
-                setUser(JSON.parse(localStorage.getItem('auth_user')) || null);
-            } catch {
-                setUser(null);
-            }
+            setUser(getAuthUser());
         };
 
         window.addEventListener('storage', syncUser);
@@ -100,6 +91,7 @@ function AppHeader() {
 
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
+        window.dispatchEvent(new Event('app:auth-changed'));
         setUser(null);
         navigate('/');
     };
@@ -407,12 +399,25 @@ function GenresPage({ id }) {
 
 function App() {
     const [path, setPath] = useState(window.location.pathname);
+    const [user, setUser] = useState(getAuthUser);
 
     useEffect(() => {
         const updatePath = () => setPath(window.location.pathname);
         window.addEventListener('popstate', updatePath);
 
         return () => window.removeEventListener('popstate', updatePath);
+    }, []);
+
+    useEffect(() => {
+        const syncUser = () => setUser(getAuthUser());
+
+        window.addEventListener('storage', syncUser);
+        window.addEventListener('app:auth-changed', syncUser);
+
+        return () => {
+            window.removeEventListener('storage', syncUser);
+            window.removeEventListener('app:auth-changed', syncUser);
+        };
     }, []);
 
     const normalizedPath = path.replace(/\/+$/, '') || '/';
@@ -431,6 +436,18 @@ function App() {
         document.title = pageTitle;
     }, [pageTitle]);
 
+    useEffect(() => {
+        if (normalizedPath !== '/admin/dashboard') {
+            return;
+        }
+
+        if (!user) {
+            navigate('/login');
+        } else if (!hasRole('admin', user)) {
+            navigate('/');
+        }
+    }, [normalizedPath, user]);
+
     let page;
 
     if (normalizedPath === '/') {
@@ -446,7 +463,9 @@ function App() {
     } else if (normalizedPath === '/register') {
         page = <RegisterForm />;
     } else if (normalizedPath === '/admin/dashboard') {
-        page = <Admin />;
+        page = hasRole('admin', user)
+            ? <Admin />
+            : <section className="container py-5"><p className="text-center">Memeriksa akses...</p></section>;
     } else {
         page = <section className="container py-5"><h1>Halaman tidak ditemukan</h1><Link href="/">Kembali ke beranda</Link></section>;
     }
